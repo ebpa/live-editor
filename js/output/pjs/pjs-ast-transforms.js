@@ -290,26 +290,28 @@ ASTTransforms.findResources = function(resources) {
     };
 };
 
+
 ASTTransforms.rewriteNewExpressions = function(envName) {
     return {
         leave(node, path) {
             if (node.type === "NewExpression") {
                 return b.CallExpression(
-                    b.CallExpression(
-                        b.MemberExpression(
+		    b.CallExpression(
+			b.MemberExpression(
                             b.MemberExpression(
-                                b.Identifier(envName),
-                                b.Identifier("PJSOutput")
+				b.Identifier(envName),
+				b.Identifier("PJSOutput")
                             ),
                             b.Identifier("applyInstance")
-                        ),
-                        [
-                            node.callee,
-                            b.Literal(node.callee.name)
-                        ]
+			),
+			[
+                            //node,
+			    node.callee,
+			    b.Literal(node.callee.name)
+			]
                     ),
-                    node.arguments
-                );
+		    node.arguments
+		);
             }
         }
     }

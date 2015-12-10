@@ -559,8 +559,8 @@ _.extend(PJSOutput, {
     // instance (see: .__id())
     // Meant to translate:
     // new Foo(a, b, c) into: applyInstance(Foo)(a, b, c)
-    applyInstance: function(classFn, className) {
-        // Don't wrap it if we're dealing with a built-in object (like RegExp)
+    applyInstance: function(/*newObj, */classFn, className) {
+	// Don't wrap it if we're dealing with a built-in object (like RegExp)
         try {
             var funcName = (/^function\s*(\w+)/.exec(classFn) || [])[1];
             if (funcName && window[funcName] === classFn) {
@@ -568,57 +568,25 @@ _.extend(PJSOutput, {
             }
         } catch(e) {}
 
-        // Return a function for later execution.
-        return function() {
-            var args = arguments;
-
-            // Create a temporary constructor function
-            function Class() {
-                classFn.apply(this, args);
+	return function() {
+	    
+	    var newObj = new (classFn.bind.apply(classFn, arguments));
+	    Object.defineProperty(newObj, 
+				  "__id",
+				  {
+				      "enumerable": false,
+				      "writable": true,
+				      "value": function() {
+					  return "new " + className + "(" +
+					      this.stringifyArray(arguments) + ")";
+				      }
+				  });
+            if (this.instances) {
+		this.instances.push(newObj);
             }
-
-            // Copy the prototype
-            Class.prototype = classFn.prototype;
-
-            // Instantiate the dummy function
-            var obj = new Class();
-
-            this.newCallback(classFn, className, obj, args);
-
-            // Return the new instance
-            return obj;
-        }.bind(this);
-    },
-
-    // called whenever a user defined class is called to instantiate an object.
-    // adds metadata to the class and the object to keep track of it and to
-    // serialize it.
-    // Called in PJSOutput.applyInstance and the Debugger's context.__instantiate__
-    newCallback: function (classFn, className, obj, args) {
-        // Make sure a name is set for the class if one has not been
-        // set already
-        if (!classFn.__name && className) {
-            classFn.__name = className;
-        }
-
-        // Point back to the original function
-        obj.constructor = classFn;
-
-        // Generate a semi-unique ID for the instance
-        obj.__id = function() {
-            return "new " + classFn.__name + "(" +
-                this.stringifyArray(args) + ")";
-        }.bind(this);
-
-        // Keep track of the instances that have been instantiated
-        // Note: this.instances here is actually PJSOutput.instances which is
-        // a singleton.  This means that multiple instances of PJSOutput will
-        // shared the same instances array.  Since each PJSOutput lives in its
-        // own iframe with its own execution context, each should have its own
-        // copy of PJSOutput.instances.
-        if (this.instances) {
-            this.instances.push(obj);
-        }
+	    
+	    return newObj;
+	};
     }
 });
 
